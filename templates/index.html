@@ -1,0 +1,546 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EduGenie | Learning Assistant</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<header class="topbar">
+
+    <a class="brand" href="/">
+        ✦ EduGenie
+    </a>
+
+    <span class="tagline">
+        Your AI learning companion
+    </span>
+
+</header>
+
+
+<main class="container">
+
+    <section class="hero">
+
+        <span class="eyebrow">
+            LEARN SMARTER
+        </span>
+
+        <h1>
+            What are we learning today?
+        </h1>
+
+        <p>
+            Ask questions, simplify concepts,
+            create quizzes, summarize notes,
+            or plan your learning journey.
+        </p>
+
+    </section>
+
+
+    <section class="workspace">
+
+        <form id="study-form">
+
+            <label for="task">
+                Choose a learning tool
+            </label>
+
+            <select id="task" name="task">
+
+                <option value="qa">
+                    Ask a question
+                </option>
+
+                <option value="explain">
+                    Explain a concept
+                </option>
+
+                <option value="quiz">
+                    Generate a quiz
+                </option>
+
+                <option value="summarize">
+                    Summarize text
+                </option>
+
+                <option value="learn/recommendations">
+                    Learning path
+                </option>
+
+            </select>
+
+
+            <label for="input-text" id="input-label">
+                Your question
+            </label>
+
+            <textarea
+                id="input-text"
+                name="text"
+                rows="7"
+                required
+                maxlength="20000"
+                placeholder="Example: What is photosynthesis?"
+            ></textarea>
+
+
+            <div class="form-footer">
+
+                <span id="char-count">
+                    0 / 20000
+                </span>
+
+                <button
+                    id="submit-btn"
+                    type="submit"
+                >
+                    Generate answer →
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <section
+        id="result-panel"
+        class="result-panel"
+        aria-live="polite"
+        hidden
+    >
+
+        <div class="result-heading">
+
+            <h2 id="result-title">
+                Your result
+            </h2>
+
+            <button
+                id="clear-btn"
+                class="text-button"
+                type="button"
+            >
+                Clear
+            </button>
+
+        </div>
+
+        <div id="result-content"></div>
+
+    </section>
+
+
+    <p class="disclaimer">
+        AI can make mistakes. Use EduGenie
+        as a study aid and verify important information.
+    </p>
+
+</main>
+
+
+<footer>
+    Made for curious learners · EduGenie
+</footer>
+
+
+<script>
+
+const form = document.querySelector("#study-form");
+
+const task = document.querySelector("#task");
+
+const input = document.querySelector("#input-text");
+
+const label = document.querySelector("#input-label");
+
+const button = document.querySelector("#submit-btn");
+
+const count = document.querySelector("#char-count");
+
+const panel = document.querySelector("#result-panel");
+
+const content = document.querySelector("#result-content");
+
+const resultTitle = document.querySelector("#result-title");
+
+
+const titles = {
+
+    qa: [
+        "Your question",
+        "Ask a question",
+        "Example: Why is the sky blue?"
+    ],
+
+    explain: [
+        "Topic to explain",
+        "Explain a concept",
+        "Example: Explain inheritance in Java"
+    ],
+
+    quiz: [
+        "Topic for quiz",
+        "Generate a quiz",
+        "Example: Python basics"
+    ],
+
+    summarize: [
+        "Text to summarize",
+        "Summarize text",
+        "Paste your study material here..."
+    ],
+
+    "learn/recommendations": [
+        "Topic to learn",
+        "Learning path",
+        "Example: SQL from beginner to advanced"
+    ]
+
+};
+
+
+task.addEventListener("change", () => {
+
+    const item = titles[task.value];
+
+    label.textContent = item[0];
+
+    input.placeholder = item[2];
+
+    button.textContent = item[1] + " →";
+
+    input.value = "";
+
+    count.textContent = "0 / 20000";
+
+});
+
+
+input.addEventListener("input", () => {
+
+    count.textContent =
+        `${input.value.length} / 20000`;
+
+});
+
+
+document
+    .querySelector("#clear-btn")
+    .addEventListener("click", () => {
+
+        panel.hidden = true;
+
+        content.replaceChildren();
+
+        input.value = "";
+
+        count.textContent = "0 / 20000";
+
+        input.focus();
+
+    });
+
+
+function addText(parent, text) {
+
+    const pre = document.createElement("pre");
+
+    pre.className = "answer-text";
+
+    pre.textContent = text;
+
+    parent.appendChild(pre);
+
+}
+
+
+function renderQuiz(quizData) {
+
+    /*
+       Gemini may return quiz as text.
+       Display it safely if it is not JSON.
+    */
+
+    if (typeof quizData === "string") {
+
+        addText(content, quizData);
+
+        return;
+
+    }
+
+    if (!Array.isArray(quizData)) {
+
+        addText(content, JSON.stringify(quizData, null, 2));
+
+        return;
+
+    }
+
+
+    const quiz = document.createElement("div");
+
+    quiz.className = "quiz-list";
+
+
+    quizData.forEach((q, index) => {
+
+        const card = document.createElement("article");
+
+        card.className = "quiz-card";
+
+
+        const heading = document.createElement("h3");
+
+        heading.textContent =
+            `${index + 1}. ${q.question}`;
+
+        card.appendChild(heading);
+
+
+        if (Array.isArray(q.options)) {
+
+            const options = document.createElement("div");
+
+            options.className = "options";
+
+
+            q.options.forEach(option => {
+
+                const btn = document.createElement("button");
+
+                btn.type = "button";
+
+                btn.className = "option";
+
+                btn.textContent = option;
+
+
+                btn.addEventListener("click", () => {
+
+                    if (card.dataset.answered) {
+                        return;
+                    }
+
+                    card.dataset.answered = "true";
+
+
+                    const feedback =
+                        document.createElement("p");
+
+                    feedback.className =
+                        option === q.answer
+                            ? "feedback correct"
+                            : "feedback incorrect";
+
+
+                    feedback.textContent =
+                        option === q.answer
+                            ? "Correct! " + (q.explanation || "")
+                            : `Not quite. Correct answer: ${q.answer}. `
+                              + (q.explanation || "");
+
+
+                    card.appendChild(feedback);
+
+
+                    options
+                        .querySelectorAll("button")
+                        .forEach(b => {
+                            b.disabled = true;
+                        });
+
+                });
+
+
+                options.appendChild(btn);
+
+            });
+
+
+            card.appendChild(options);
+
+        }
+
+        quiz.appendChild(card);
+
+    });
+
+
+    content.appendChild(quiz);
+
+}
+
+
+form.addEventListener("submit", async event => {
+
+    event.preventDefault();
+
+
+    const text = input.value.trim();
+
+    if (text.length < 2) {
+
+        input.focus();
+
+        return;
+
+    }
+
+
+    button.disabled = true;
+
+    button.textContent = "Working…";
+
+    panel.hidden = false;
+
+    content.replaceChildren();
+
+    resultTitle.textContent =
+        "EduGenie is thinking…";
+
+
+    try {
+
+        let requestBody = {
+            text: text
+        };
+
+
+        /*
+           Quiz API requires:
+           topic
+           number_of_questions
+        */
+
+        if (task.value === "quiz") {
+
+            requestBody = {
+                topic: text,
+                number_of_questions: 5
+            };
+
+        }
+
+
+        const response = await fetch(
+            "/" + task.value,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify(requestBody)
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Something went wrong."
+            );
+
+        }
+
+
+        resultTitle.textContent =
+            titles[task.value][1];
+
+
+        /*
+           Use the correct response field
+           from each FastAPI endpoint.
+        */
+
+        if (task.value === "qa") {
+
+            addText(content, data.answer);
+
+        }
+
+        else if (task.value === "explain") {
+
+            addText(content, data.explanation);
+
+        }
+
+        else if (task.value === "quiz") {
+
+            renderQuiz(data.quiz);
+
+        }
+
+        else if (task.value === "summarize") {
+
+            addText(content, data.summary);
+
+        }
+
+        else if (task.value === "learn/recommendations") {
+
+            addText(content, data.recommendations);
+
+        }
+
+        else {
+
+            addText(
+                content,
+                "No result received."
+            );
+
+        }
+
+
+    } catch (error) {
+
+        resultTitle.textContent =
+            "Unable to complete request";
+
+
+        addText(
+            content,
+            "❌ " +
+            (
+                error.message ||
+                "Please check your connection and try again."
+            )
+        );
+
+
+    } finally {
+
+        button.disabled = false;
+
+        button.textContent =
+            titles[task.value][1] + " →";
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
+```
